@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Punjabi to Roman</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gurmukhi:wght@400;600&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #0f1719;
+    --ink: #e2ebf0;
+    --muted: #8ea5ab;
+    --teal: #149b9e;
+    --teal-dark: #0f7a7d;
+    --marigold: #f5b82e;
+    --panel: #182428;
+    --line: #293d43;
+    --input-bg: #121c20;
+    --code-bg: #223238;
+    --quiet-hover: #1e3136;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    line-height: 1.5;
+    padding: 2rem 1.25rem 3rem;
+  }
+  main { max-width: 62rem; margin: 0 auto; }
+  h1 {
+    font-family: "Noto Sans Gurmukhi", sans-serif;
+    font-weight: 600;
+    font-size: clamp(1.9rem, 5vw, 3rem);
+    line-height: 1.2;
+    margin: 0 0 0.25rem;
+  }
+  .sub { color: var(--muted); margin: 0 0 1.75rem; max-width: 40rem; }
+  .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 720px) { .panes { grid-template-columns: 1fr; } }
+  .pane {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    min-height: 16rem;
+  }
+  .pane-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+    font-weight: 600;
+    min-height: 3rem;
+  }
+  textarea, .out {
+    flex: 1;
+    width: 100%;
+    border: 0;
+    padding: 0.9rem;
+    font-size: 1.2rem;
+    line-height: 1.6;
+    color: var(--ink);
+    background: transparent;
+    resize: vertical;
+    min-height: 12rem;
+  }
+  textarea { font-family: "Noto Sans Gurmukhi", sans-serif; }
+  textarea:focus-visible { outline: 3px solid var(--marigold); outline-offset: -3px; border-radius: 0 0 10px 10px; }
+  .out { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .out.empty { color: var(--muted); }
+  button {
+    font: inherit; font-size: 0.95rem;
+    border: 1px solid var(--teal);
+    background: var(--teal);
+    color: #0b1416;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 0.3rem 0.8rem;
+    cursor: pointer;
+  }
+  button:hover { background: var(--teal-dark); color: #fff; }
+  button.quiet { background: transparent; color: var(--teal); border-color: transparent; }
+  button.quiet:hover { background: var(--quiet-hover); color: #20c2c6; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--marigold); outline-offset: 2px; }
+  .options { margin-top: 1rem; display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap; color: var(--muted); }
+  .options label { display: flex; gap: 0.5rem; align-items: center; cursor: pointer; }
+  #status { color: #f87171; min-height: 1.5rem; margin-top: 0.5rem; }
+  .words {
+    margin-top: 2rem;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1rem 1.1rem 1.1rem;
+  }
+  .words h2 { font-size: 1.15rem; margin: 0 0 0.25rem; }
+  .words p { margin: 0 0 0.9rem; color: var(--muted); max-width: 44rem; }
+  .words code { background: var(--code-bg); color: #5eead4; padding: 0.05rem 0.3rem; border-radius: 4px; font-size: 0.92em; }
+  .row { display: flex; gap: 0.9rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.7rem; }
+  .row input[type="password"] {
+    font: inherit;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--input-bg);
+    color: var(--ink);
+  }
+  .row input[type="file"] { color: var(--muted); }
+  .row label { color: var(--muted); display: flex; gap: 0.4rem; align-items: center; }
+  #count { font-weight: 600; color: var(--ink); }
+  #words-status { min-height: 1.5rem; margin: 0.4rem 0 0; }
+  #words-status.ok { color: #2dd4bf; }
+  #words-status.err { color: #f87171; }
+  #srt-status { min-height: 1.5rem; margin: 0.4rem 0 0; }
+  #srt-status.ok { color: #2dd4bf; }
+  #srt-status.err { color: #f87171; }
+
+  .scroll {
+       /* Step 1: Set a maximum or fixed limit */
+      max-height: 600px;
+
+      /* Step 2: Add vertical scroll behavior when content overflows */
+      overflow-y: auto;
+
+      /* Optional styling to see the box */
+      border: 1px solid #222020;
+      padding: 10px;
+    }
+</style>
+</head>
+<body>
+<main>
+  <h1>ਪੰਜਾਬੀ → Roman</h1>
+  <p class="sub">Type or paste Punjabi in Gurmukhi script and read it in the Roman spelling people use when they text.</p>
+
+  <div class="panes">
+    <section class="pane">
+      <div class="pane-head">
+        <label for="src">Gurmukhi</label>
+        <button class="quiet" id="example" type="button">Insert an example</button>
+      </div>
+      <textarea id="src" lang="pa" placeholder="ਇੱਥੇ ਪੰਜਾਬੀ ਲਿਖੋ" spellcheck="false"></textarea>
+    </section>
+
+    <section class="pane">
+      <div class="pane-head">
+        <span id="out-label">Roman</span>
+        <button id="copy" type="button">Copy</button>
+      </div>
+      <div class="out empty scroll" id="out" role="status" aria-live="polite" aria-labelledby="out-label">Roman text appears here.</div>
+    </section>
+  </div>
+
+  <p class="note" id="note" role="status"></p>
+
+  <div class="options">
+    <label><input type="checkbox" id="long"> Double the long vowels (aa, ee, oo)</label>
+    <label><input type="checkbox" id="caps" checked> Capital letter after . ? !</label>
+  </div>
+  <section class="words" aria-labelledby="words-title">
+    <h2 id="words-title">Exception words</h2>
+    <p>Upload a file of words that should be spelled your way. Use JSON, such as <code>{"ਪੰਜਾਬ": "punjab"}</code>,
+       or a Python file with a dictionary such as <code>EXCEPTIONS = {"ਪੰਜਾਬ": "punjab"}</code>.
+       Each word must match the whole Gurmukhi word.</p>
+    <div class="row">
+      <input type="file" id="file" accept=".json,.py,.txt" aria-label="Exception list file">
+      <label><input type="radio" name="mode" value="merge" checked> Add to current list</label>
+      <label><input type="radio" name="mode" value="replace"> Replace current list</label>
+    </div>
+    <div class="row">
+      <label id="token-wrap" hidden>Admin token <input type="password" id="token" autocomplete="off"></label>
+      <button type="button" id="upload">Upload list</button>
+      <button type="button" class="quiet" id="download">Download current list</button>
+      <button type="button" class="quiet" id="clear">Clear list</button>
+      <span><span id="count">0</span> custom words loaded</span>
+    </div>
+    <p id="words-status" role="status"></p>
+  </section>
+
+  <section class="words" aria-labelledby="srt-title">
+    <h2 id="srt-title">Subtitle file (.srt)</h2>
+    <p>Upload a Gurmukhi .srt file and download the Roman version. Cue numbers and timestamps stay as they are.
+       The options above and your exception words are used. A capital letter appears only when the previous
+       text line ended with . ? or !, even across subtitles, and subtitle tags such as <code>&lt;i&gt;</code> are kept.</p>
+    <div class="row">
+      <input type="file" id="srt-file" accept=".srt,.txt" aria-label="Subtitle file">
+      <button type="button" id="srt-go">Convert and download</button>
+    </div>
+    <p id="srt-status" role="status"></p>
+  </section>
+
+  <div id="status" role="alert"></div>
+</main>
+
+<script>
+  const src = document.getElementById("src");
+  const out = document.getElementById("out");
+  const longBox = document.getElementById("long");
+  const capsBox = document.getElementById("caps");
+  const status = document.getElementById("status");
+  const PLACEHOLDER = "Roman text appears here.";
+  let timer = null, latest = 0;
+
+  function show(text) {
+    out.textContent = text || PLACEHOLDER;
+    out.classList.toggle("empty", !text);
+  }
+
+  async function run() {
+    const text = src.value;
+    if (!text.trim()) { show(""); status.textContent = ""; document.getElementById("note").textContent = ""; return; }
+    const ticket = ++latest;
+    try {
+      const res = await fetch("/api/transliterate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, long_vowels: longBox.checked, capitalize: capsBox.checked })
+      });
+      if (!res.ok) throw new Error("Server returned " + res.status);
+      const data = await res.json();
+      if (ticket !== latest) return;          // a newer request is in flight
+      show(data.roman);
+      document.getElementById("note").textContent = data.srt
+        ? "Subtitle format detected: cue numbers and timestamps are kept, and capitals follow the previous text line."
+        : "";
+      status.textContent = "";
+    } catch (err) {
+      status.textContent = "Could not convert the text. Check that the server is running and try again.";
+    }
+  }
+
+  function schedule() { clearTimeout(timer); timer = setTimeout(run, 150); }
+
+  src.addEventListener("input", schedule);
+  longBox.addEventListener("change", run);
+  capsBox.addEventListener("change", run);
+
+  document.getElementById("example").addEventListener("click", () => {
+    src.value = "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਤੁਸੀਂ ਕਿਵੇਂ ਹੋ? ਮੈਂ ਪੰਜਾਬ ਵਿੱਚ ਰਹਿੰਦਾ ਹਾਂ।";
+    run();
+    src.focus();
+  });
+
+  document.getElementById("copy").addEventListener("click", async (e) => {
+    if (out.classList.contains("empty")) return;
+    try {
+      await navigator.clipboard.writeText(out.textContent);
+      const btn = e.currentTarget;
+      btn.textContent = "Copied";
+      setTimeout(() => (btn.textContent = "Copy"), 1200);
+    } catch (_) {
+      status.textContent = "Copy was blocked by the browser. Select the text and copy it manually.";
+    }
+  });
+
+  // ---- Exception words ----
+  const fileInput = document.getElementById("file");
+  const countEl = document.getElementById("count");
+  const wordsStatus = document.getElementById("words-status");
+  const tokenInput = document.getElementById("token");
+
+  function say(msg, ok) {
+    wordsStatus.textContent = msg;
+    wordsStatus.className = ok ? "ok" : "err";
+  }
+  function authHeaders() {
+    return tokenInput.value ? { "X-Admin-Token": tokenInput.value } : {};
+  }
+  async function readError(res) {
+    try { return (await res.json()).detail || ("Server returned " + res.status); }
+    catch (_) { return "Server returned " + res.status; }
+  }
+  async function refreshInfo() {
+    try {
+      const info = await (await fetch("/api/exceptions")).json();
+      countEl.textContent = info.count.toLocaleString();
+      document.getElementById("token-wrap").hidden = !info.token_required;
+    } catch (_) {}
+  }
+
+  document.getElementById("upload").addEventListener("click", async () => {
+    const file = fileInput.files[0];
+    if (!file) { say("Choose a .json or .py file first.", false); return; }
+    if (file.size > 1000000) { say("That file is over 1 MB.", false); return; }
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    try {
+      const res = await fetch("/api/exceptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ content: await file.text(), mode })
+      });
+      if (!res.ok) { say(await readError(res), false); return; }
+      const data = await res.json();
+      say("Loaded " + data.added.toLocaleString() + " words from " + file.name + ".", true);
+      countEl.textContent = data.count.toLocaleString();
+      fileInput.value = "";
+      run();
+    } catch (_) { say("Upload failed. Check that the server is running.", false); }
+  });
+
+  document.getElementById("clear").addEventListener("click", async () => {
+    if (!confirm("Remove all custom words?")) return;
+    try {
+      const res = await fetch("/api/exceptions", { method: "DELETE", headers: authHeaders() });
+      if (!res.ok) { say(await readError(res), false); return; }
+      countEl.textContent = "0";
+      say("Custom words cleared.", true);
+      run();
+    } catch (_) { say("Could not clear the list. Check that the server is running.", false); }
+  });
+
+  document.getElementById("download").addEventListener("click", () => {
+    window.location.href = "/api/exceptions/download";
+  });
+
+  // ---- Subtitle (.srt) conversion ----
+  const srtStatus = document.getElementById("srt-status");
+  function saySrt(msg, ok) { srtStatus.textContent = msg; srtStatus.className = ok ? "ok" : "err"; }
+
+  document.getElementById("srt-go").addEventListener("click", async () => {
+    const file = document.getElementById("srt-file").files[0];
+    if (!file) { saySrt("Choose an .srt file first.", false); return; }
+    if (file.size > 1500000) { saySrt("That file is over 1.5 MB.", false); return; }
+    saySrt("Converting...", true);
+    try {
+      const res = await fetch("/api/srt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: await file.text(),
+          long_vowels: longBox.checked,
+          capitalize: capsBox.checked
+        })
+      });
+      if (!res.ok) { saySrt(await readError(res), false); return; }
+      const data = await res.json();
+      const blob = new Blob([data.srt], { type: "text/plain;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = file.name.replace(/\.[^.]+$/, "") + "Roman.srt";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+      saySrt("Done. Downloaded " + link.download + ".", true);
+    } catch (_) { saySrt("Conversion failed. Check that the server is running.", false); }
+  });
+
+  refreshInfo();
+</script>
+</body>
+</html>
