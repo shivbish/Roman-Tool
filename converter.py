@@ -37,10 +37,10 @@ INDEPENDENT_VOWELS = {
 CARRIERS = {"ਅ", "ੳ", "ੲ"}  # vowel carriers: a following vowel sign replaces them
 
 SIGNS_SHORT = {
-    "ਾ": "a", "ਿ": "e", "ੀ": "i", "ੁ": "u", "ੂ": "oo",
+    "ਾ": "a", "ਿ": "i", "ੀ": "i", "ੁ": "u", "ੂ": "u",
     "ੇ": "e", "ੈ": "ae", "ੋ": "o", "ੌ": "au",
 }
-SIGNS_LONG = {**SIGNS_SHORT, "ਾ": "aa", "ੀ": "ee", "ੂ": "oo"}
+SIGNS_LONG = {**SIGNS_SHORT, "ਾ": "aa", "ੀ": "ee", "ੂ": "u"}
 
 NASALS = {"ਂ", "ੰ", "ਁ"}   # bindi, tippi, adak bindi
 ADDAK = "ੱ"
@@ -64,6 +64,14 @@ EXCEPTIONS = {
 }
 
 WORD_RE = re.compile(r"[\u0A01-\u0A65\u0A70-\u0A7F]+")
+
+# Odd whitespace -> normal space; zero-width characters are removed
+_SPACES = {
+    "\u00a0": " ", "\u202f": " ", "\u2007": " ", "\u2009": " ",
+    "\u200a": " ", "\u3000": " ",
+    "\u200b": None, "\u200c": None, "\u200d": None, "\u2060": None,
+}
+_SPACE_TABLE = str.maketrans(_SPACES)
 
 
 @dataclass
@@ -200,9 +208,12 @@ def convert(text: str, long_vowels: bool = False, exceptions: dict = None,
     """
     table = _merge(exceptions)
     text = unicodedata.normalize("NFC", text)
+    text = text.translate(_SPACE_TABLE)        
     text = WORD_RE.sub(lambda m: _word(m.group(), long_vowels, table), text)
     text = text.translate(DIGITS).translate(PUNCT)
-    return capitalize_sentences(text) if capitalize else text
+    if capitalize:
+        text = capitalize_dashes(capitalize_brackets(capitalize_sentences(text)))
+    return text
 
 
 # --------------------------------------------------------------------------
@@ -275,7 +286,33 @@ _TAG = r"(?:<[^>]+>|\{[^}]*\})"                      # <i> </i> {\an8}
 _LEAD = re.compile(rf"""^(\s*(?:{_TAG}|["'(\[])*)([^\W\d_])""")
 _END_PUNCT = re.compile(rf"""[.?!](?:["')\]]|{_TAG})*\s*$""")
 _MID_LINE = re.compile(rf"""([.?!]+(?:["')\]]|{_TAG})*[ \t]+(?:{_TAG}|["'(\[])*)([a-z])""")
+# Closed square brackets: first letter inside [ ] and first letter after ]
+# become capitals. An unclosed "[" is left alone.
+_CLOSED_BRACKET = re.compile(
+    rf"""\[([^\[\]]*)\]((?:["')]|{_TAG}|[ \t])*)([a-z]?)"""
+)
+# Line that ends with a closed bracket, e.g. "[Music]"
+_BRACKET_END = re.compile(rf"""\[[^\[\]]*\](?:["')]|{_TAG})*\s*$""")
 
+
+def capitalize_brackets(text: str) -> str:
+    """[ਸੰਗੀਤ] ਮੈਂ -> [Sangeet] Main"""
+    def fix(m):
+        inner = re.sub(r"^(\W*)([^\W\d_])",
+                       lambda k: k.group(1) + k.group(2).upper(), m.group(1))
+        return "[" + inner + "]" + m.group(2) + m.group(3).upper()
+    return _CLOSED_BRACKET.sub(fix, text)
+
+# Dialogue dash: first letter after a "-" that starts a line or follows a space.
+# -ajae pal!  ->  -Ajae pal!      -[shekh] -> -[Shekh]
+_DASH_START = re.compile(
+    rf"""((?:^|(?<=\s))[-\u2013\u2014](?:{_TAG}|["'(\[]|[ \t])*)([a-z])""",
+    re.M,
+)
+
+
+def capitalize_dashes(text: str) -> str:
+    return _DASH_START.sub(lambda m: m.group(1) + m.group(2).upper(), text)
 
 def looks_like_srt(text: str) -> bool:
     """True if the text contains at least one subtitle timestamp line."""
@@ -308,7 +345,9 @@ def fix_srt_case(text: str) -> str:
                 ch = m.group(2).upper() if prev_ended else m.group(2).lower()
                 body = m.group(1) + ch + body[m.end():]
         body = _MID_LINE.sub(lambda m: m.group(1) + m.group(2).upper(), body)
-        prev_ended = bool(_END_PUNCT.search(body))
+        body = capitalize_brackets(body)
+        body = capitalize_dashes(body)
+        prev_ended = bool(_END_PUNCT.search(body)) or bool(_BRACKET_END.search(body))
         out.append(body + eol)
     return "".join(out)
 
@@ -318,6 +357,7 @@ def convert_srt(text: str, long_vowels: bool = False, exceptions: dict = None,
     """Convert the text lines of a Gurmukhi .srt file to casual Roman."""
     table = _merge(exceptions)
     text = unicodedata.normalize("NFC", text.lstrip("\ufeff"))
+    text = text.translate(_SPACE_TABLE)
     lines = text.splitlines(keepends=True)
     out = []
     for i, raw in enumerate(lines):

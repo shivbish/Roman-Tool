@@ -161,10 +161,8 @@
     <label><input type="checkbox" id="caps" checked> Capital letter after . ? !</label>
   </div>
   <section class="words" aria-labelledby="words-title">
-    <h2 id="words-title">Exception words</h2>
-    <p>Upload a file of words that should be spelled your way. Use JSON, such as <code>{"ਪੰਜਾਬ": "punjab"}</code>,
-       or a Python file with a dictionary such as <code>EXCEPTIONS = {"ਪੰਜਾਬ": "punjab"}</code>.
-       Each word must match the whole Gurmukhi word.</p>
+    <h2 id="words-title">Dictionary words</h2>
+    <p>Upload a file of words that should be spelled your way.</p>
     <div class="row">
       <input type="file" id="file" accept=".json,.py,.txt" aria-label="Exception list file">
       <label><input type="radio" name="mode" value="merge" checked> Add to current list</label>
@@ -182,9 +180,13 @@
 
   <section class="words" aria-labelledby="srt-title">
     <h2 id="srt-title">Subtitle file (.srt)</h2>
-    <p>Upload a Gurmukhi .srt file and download the Roman version. Cue numbers and timestamps stay as they are.
+    <p>Upload a Gurmukhi .srt file and download the Roman version.</p>
+    <details> 
+      <summary>More Information</summary>
+      <p>Cue numbers and timestamps stay as they are.
        The options above and your exception words are used. A capital letter appears only when the previous
        text line ended with . ? or !, even across subtitles, and subtitle tags such as <code>&lt;i&gt;</code> are kept.</p>
+    </details>
     <div class="row">
       <input type="file" id="srt-file" accept=".srt,.txt" aria-label="Subtitle file">
       <button type="button" id="srt-go">Convert and download</button>
